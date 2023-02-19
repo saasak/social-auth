@@ -24,10 +24,14 @@ export class Facebook extends SocialNetwork implements SocialConn {
 
 		await this.saveState({ state, verifier })
 
-		return this.buildUrl(baseUrl, params)
+		return {
+			url: this.buildUrl(baseUrl, params),
+			state,
+			verifier,
+		}
 	}
 
-	async getAuthTokens(authResponse: AuthCallback) {
+	async getAuthTokens(authResponse: AuthCallback): Promise<Tokens> {
 		const { code } = await this.checkAuthResponse(authResponse)
 
 		const shortLiveTokenUrl = 'https://graph.facebook.com/v16.0/oauth/access_token';

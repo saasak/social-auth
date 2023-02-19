@@ -2,7 +2,8 @@ import {
 	SocialNetwork,
 	SocialConn,
 	type Tokens,
-	AuthCallback
+	AuthCallback,
+	AuthInit
 } from "./SocialNetwork";
 import fetch from 'node-fetch'
 import FormData from 'form-data'
@@ -17,7 +18,7 @@ type InstagramPost = {
 };
 
 export class Instagram extends SocialNetwork implements SocialConn {
-	async getAuthorizeUrl(stateObj: Record<string, string>) {
+	async getAuthorizeUrl(stateObj: Record<string, string>): Promise<AuthInit> {
 		const baseUrl = 'https://api.instagram.com/oauth/authorize';
 		const state = SocialNetwork.cipherState(stateObj);
 		const verifier = this.generateVerifier(128);
@@ -30,10 +31,15 @@ export class Instagram extends SocialNetwork implements SocialConn {
 		};
 
 		await this.saveState({ state, verifier })
-		return this.buildUrl(baseUrl, params)
+
+		return {
+			url: this.buildUrl(baseUrl, params),
+			state,
+			verifier
+		}
 	}
 
-	async getAuthTokens(authResponse: AuthCallback) {
+	async getAuthTokens(authResponse: AuthCallback): Promise<Tokens> {
 		const { code } = await this.checkAuthResponse(authResponse)
 
 		const shortLiveTokenUrl = 'https://api.instagram.com/oauth/access_token';

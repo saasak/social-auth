@@ -5,6 +5,12 @@ export type StateVerif = {
 	verifier?: string
 }
 
+export type AuthInit = {
+	state: string,
+	url: string,
+	verifier: string
+}
+
 export type AuthCallback = {
 	code: string
 	givenState: string
@@ -46,7 +52,7 @@ const STATE_IV = (process.env.SOCIAL_STATE_IV ?? 'fuck it i am fed up of this').
 const STATE_ALGO = 'aes-256-cbc';
 
 export interface SocialConn {
-	getAuthorizeUrl: (stateObj: Record<string, string>) => Promise<string>
+	getAuthorizeUrl: (stateObj: Record<string, string>) => Promise<AuthInit>
 	getAuthTokens: (authResponseParams: AuthCallback) => Promise<Tokens>
 	refreshAuthTokens: (oldTokens: OldTokens) => Promise<RefreshedTokens>
 }

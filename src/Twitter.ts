@@ -3,6 +3,7 @@ import {
 	SocialNetwork,
 	SocialConn,
 	type Tokens,
+	type AuthInit,
 	type AuthCallback,
 } from "./SocialNetwork";
 import fetch from 'node-fetch'
@@ -14,7 +15,7 @@ type TwitterPost = {
 };
 
 export class Twitter extends SocialNetwork implements SocialConn {
-	async getAuthorizeUrl(obj?: Record<string, string>) {
+	async getAuthorizeUrl(obj?: Record<string, string>): Promise<AuthInit> {
 		const baseUrl = 'https://twitter.com/i/oauth2/authorize';
 		const state = SocialNetwork.cipherState(obj ?? {});
 		const verifier = this.generateVerifier();
@@ -30,10 +31,10 @@ export class Twitter extends SocialNetwork implements SocialConn {
 
 		await this.saveState({ state, verifier })
 
-		return this.buildUrl(baseUrl, params)
+		return { url: this.buildUrl(baseUrl, params), state, verifier }
 	}
 
-	async getAuthTokens(authResponse: AuthCallback) {
+	async getAuthTokens(authResponse: AuthCallback): Promise<Tokens> {
 		const basic = SocialNetwork.toBase64([this.creds.client_id, this.creds.client_secret]);
 		const shortLiveTokenUrl = 'https://api.twitter.com/2/oauth2/token';
 		const shortLiveTokenParams = {};
@@ -68,7 +69,6 @@ export class Twitter extends SocialNetwork implements SocialConn {
 		return {
 			access_token,
 			refresh_token,
-			user_id: this.creds.user_id,
 		};
 	}
 
@@ -102,7 +102,7 @@ export class Twitter extends SocialNetwork implements SocialConn {
 		return { access_token, refresh_token, refreshed_at: new Date() };
 	}
 
-	async fetchPosts(tokens: Tokens, opts: { since?: string, userId: string }) {
+	async fetchPosts(tokens: Tokens, opts: { since?: string, userId?: string }) {
 		if (!tokens?.access_token || !opts.userId) {
 			throw new Error('Token are mandatory for fetching a user timeline')
 		}
