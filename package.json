@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "npx rimraf dist && tsc --rootDir ./src --outDir dist/",
+    "build": "npx rimraf dist && tsc -p tsconfig.json",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepack": "npm run build"
   },
@@ -19,6 +19,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^18.14.0",
+    "@types/node-fetch": "^2.6.2",
     "@typescript-eslint/eslint-plugin": "^5.52.0",
     "@typescript-eslint/parser": "^5.52.0",
     "eslint": "^8.34.0",
@@ -30,6 +31,6 @@
   },
   "dependencies": {
     "form-data": "^4.0.0",
-    "node-fetch": "^3.3.0"
+    "node-fetch": "^2.6.7"
   }
 }
