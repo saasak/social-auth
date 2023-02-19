@@ -7,15 +7,25 @@ export type StateVerif = {
 
 export type AuthCallback = {
 	code: string
-	state: string
+	givenState: string
+	savedState?: string
+	verifier?: string
+}
+
+export type OldTokens = {
+	access_token: string
+	refresh_token?: string
 }
 
 export type Tokens = {
 	access_token: string
 	refresh_token?: string
-	expires_in?: Date
-	refreshed_at?: Date
+	expires_at?: Date
 }
+
+export type RefreshedTokens = {
+	refreshed_at?: Date
+} & Tokens
 
 export type Credentials = {
 	client_id: string
@@ -27,9 +37,6 @@ export type Credentials = {
 export type Options = {
 	creds: Credentials
 	scope?: string[]
-	saveState?: (obj: StateVerif) => Promise<void>
-	getState?: (state: string) => Promise<StateVerif>
-	saveTokens? : (tokens: Tokens) => Promise<void>
 }
 
 const STATE_SECRET = (
@@ -38,61 +45,68 @@ const STATE_SECRET = (
 const STATE_IV = (process.env.SOCIAL_STATE_IV ?? 'fuck it i am fed up of this').slice(0, 16);
 const STATE_ALGO = 'aes-256-cbc';
 
-const inMemoryMap = new Map()
-const defaultSaveState = async ({ state, verifier }: StateVerif) => {
-	inMemoryMap.set(state, verifier)
-}
-const defaultGetState = async (state: string) => {
-	if (!inMemoryMap.has(state)) {
-		throw new Error('Error getting state')
-	}
-
-	return { state, verifier: inMemoryMap.get(state) }
-}
-
 export interface SocialConn {
 	getAuthorizeUrl: (stateObj: Record<string, string>) => Promise<string>
 	getAuthTokens: (authResponseParams: AuthCallback) => Promise<Tokens>
-	refreshAuthTokens: (oldTokens: Tokens) => Promise<Tokens>
+	refreshAuthTokens: (oldTokens: OldTokens) => Promise<RefreshedTokens>
 }
 
 export abstract class SocialNetwork {
 	public creds: Credentials
 	public scope: string[] | undefined
-	public saveState: ({ state, verifier }: StateVerif) => Promise<void>
-	public getState: (state: string) => Promise<StateVerif>
+
+	public static inMemoryMap = new Map()
+	public static STATE_SECRET = STATE_SECRET
+	public static STATE_IV = STATE_IV
 
 	constructor(opts: Options) {
 		this.creds = opts.creds
 		this.scope = opts.scope
-		this.saveState = opts.saveState ?? defaultSaveState
-		this.getState = opts.getState ?? defaultGetState
 	}
 
-	buildUrl(
-		base: string,
-		params?: Record<string, string>
-	): string {
-		if (!params || !Object.keys(params)?.length) {
-				return base;
+	async checkAuthResponse(authResponse: AuthCallback) {
+		const savedStateAndVerifier = await this.getState(authResponse.givenState)
+		const verifier = authResponse.verifier ?? savedStateAndVerifier.verifier
+		const state = authResponse.savedState ?? savedStateAndVerifier.state
+
+		if (!authResponse.code) {
+			throw new Error('No code found')
 		}
 
-		return [
-				base,
-				Object.entries(params)
-						.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-						.join('&')
-		].join('?');
+		if (!verifier) {
+			throw new Error('No code challenge verifier found')
+		}
+
+		if (!authResponse.givenState || !state || state !== authResponse.givenState) {
+			throw new Error('Invalid state')
+		}
+
+		return {
+			state,
+			verifier,
+			code: authResponse.code
+		}
 	}
 
-	/* Stolen from https://raw.githubusercontent.com/PLhery/node-twitter-api-v2/master/src/client-mixins/oauth2.helper.ts */
-	getCodeChallengeFromVerifier(len = 128) {
-		const verifier = generateRandomString(len)
-		return escapeBase64Url(createHash('sha256').update(verifier).digest('base64'));
+	async saveState({ state, verifier }: StateVerif) {
+		SocialNetwork.inMemoryMap.set(state, verifier)
 	}
 
-	static STATE_SECRET = STATE_SECRET
-	static STATE_IV = STATE_IV
+	async getState(state: string) {
+		if (!SocialNetwork.inMemoryMap.has(state)) {
+			throw new Error('Error getting state')
+		}
+
+		return { state, verifier: SocialNetwork.inMemoryMap.get(state) }
+	}
+
+	buildUrl(base: string, params?: Record<string, string>) {
+		return buildUrlWithParams(base, params)
+	}
+
+	generateVerifier(len = 128)	{
+		return generateVerifierCode(len)
+	}
 
 	static cipherState(obj: Record<string, string>) {
 			const cipher = createCipheriv(STATE_ALGO, SocialNetwork.STATE_SECRET, SocialNetwork.STATE_IV);
@@ -127,6 +141,28 @@ export abstract class SocialNetwork {
 	static toBase64(text: string[]) {
 		return encodeBase64(text.join(':'))
 	}
+}
+
+export function buildUrlWithParams(
+	base: string,
+	params?: Record<string, string>
+): string {
+	if (!params || !Object.keys(params)?.length) {
+			return base;
+	}
+
+	return [
+		base,
+		Object.entries(params)
+			.map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+			.join('&')
+	].join('?');
+}
+
+	/* Stolen from https://raw.githubusercontent.com/PLhery/node-twitter-api-v2/master/src/client-mixins/oauth2.helper.ts */
+export function generateVerifierCode(len = 128) {
+	const verifier = generateRandomString(len)
+	return escapeBase64Url(createHash('sha256').update(verifier).digest('base64'));
 }
 
 export function escapeBase64Url(str: string) {

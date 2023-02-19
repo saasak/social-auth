@@ -1,4 +1,4 @@
-import { SocialNetwork, SocialConn, type Tokens } from "./SocialNetwork";
+import { SocialNetwork, SocialConn, type Tokens, AuthCallback } from "./SocialNetwork";
 import fetch from 'node-fetch'
 
 type FacebookPost = {
@@ -13,7 +13,7 @@ export class Facebook extends SocialNetwork implements SocialConn {
 	async getAuthorizeUrl(stateObj: Record<string, string>) {
 		const baseUrl = 'https://www.facebook.com/v16.0/dialog/oauth';
 		const state = SocialNetwork.cipherState(stateObj);
-		const verifier = this.getCodeChallengeFromVerifier(128);
+		const verifier = this.generateVerifier(128);
 		const params = {
 			client_id: this.creds.client_id,
 			redirect_uri: this.creds.redirect_uri,
@@ -27,16 +27,8 @@ export class Facebook extends SocialNetwork implements SocialConn {
 		return this.buildUrl(baseUrl, params)
 	}
 
-	async getAuthTokens({ code, state }: { code: string, state: string }) {
-		const { verifier, state: savedState } = await this.getState(state)
-
-		if (!verifier) {
-			throw new Error('No code challenge verifier found')
-		}
-
-		if (state !== savedState) {
-			throw new Error('Invalid state')
-		}
+	async getAuthTokens(authResponse: AuthCallback) {
+		const { code } = await this.checkAuthResponse(authResponse)
 
 		const shortLiveTokenUrl = 'https://graph.facebook.com/v16.0/oauth/access_token';
 		const shortLiveTokenParams = {

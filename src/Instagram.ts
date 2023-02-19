@@ -1,7 +1,8 @@
 import {
 	SocialNetwork,
 	SocialConn,
-	type Tokens
+	type Tokens,
+	AuthCallback
 } from "./SocialNetwork";
 import fetch from 'node-fetch'
 import FormData from 'form-data'
@@ -19,7 +20,7 @@ export class Instagram extends SocialNetwork implements SocialConn {
 	async getAuthorizeUrl(stateObj: Record<string, string>) {
 		const baseUrl = 'https://api.instagram.com/oauth/authorize';
 		const state = SocialNetwork.cipherState(stateObj);
-		const verifier = this.getCodeChallengeFromVerifier(128);
+		const verifier = this.generateVerifier(128);
 		const params = {
 			client_id: this.creds.client_id,
 			redirect_uri: this.creds.redirect_uri,
@@ -32,16 +33,8 @@ export class Instagram extends SocialNetwork implements SocialConn {
 		return this.buildUrl(baseUrl, params)
 	}
 
-	async getAuthTokens({ code, state }: { code: string, state: string }) {
-		const { verifier, state: savedState } = await this.getState(state)
-
-		if (!verifier) {
-			throw new Error('No code challenge verifier found')
-		}
-
-		if (state !== savedState) {
-			throw new Error('Invalid state')
-		}
+	async getAuthTokens(authResponse: AuthCallback) {
+		const { code } = await this.checkAuthResponse(authResponse)
 
 		const shortLiveTokenUrl = 'https://api.instagram.com/oauth/access_token';
 		const shortLiveTokenParams = {};

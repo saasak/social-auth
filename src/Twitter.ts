@@ -2,7 +2,8 @@ import {
 	encodeBase64,
 	SocialNetwork,
 	SocialConn,
-	type Tokens
+	type Tokens,
+	type AuthCallback,
 } from "./SocialNetwork";
 import fetch from 'node-fetch'
 
@@ -16,7 +17,7 @@ export class Twitter extends SocialNetwork implements SocialConn {
 	async getAuthorizeUrl(obj?: Record<string, string>) {
 		const baseUrl = 'https://twitter.com/i/oauth2/authorize';
 		const state = SocialNetwork.cipherState(obj ?? {});
-		const verifier = this.getCodeChallengeFromVerifier();
+		const verifier = this.generateVerifier();
 		const params = {
 			client_id: this.creds.client_id,
 			redirect_uri: this.creds.redirect_uri,
@@ -32,20 +33,12 @@ export class Twitter extends SocialNetwork implements SocialConn {
 		return this.buildUrl(baseUrl, params)
 	}
 
-	async getAuthTokens({ code, state }: { code: string, state: string }) {
+	async getAuthTokens(authResponse: AuthCallback) {
 		const basic = SocialNetwork.toBase64([this.creds.client_id, this.creds.client_secret]);
 		const shortLiveTokenUrl = 'https://api.twitter.com/2/oauth2/token';
 		const shortLiveTokenParams = {};
 
-		const { verifier, state: savedState } = await this.getState(state)
-
-		if (!verifier) {
-			throw new Error('No code challenge verifier found')
-		}
-
-		if (state !== savedState) {
-			throw new Error('Invalid state')
-		}
+		const { verifier, code } = await this.checkAuthResponse(authResponse)
 
 		const urlEncoded = new URLSearchParams();
 		urlEncoded.append('client_id', this.creds.client_id);
@@ -76,11 +69,10 @@ export class Twitter extends SocialNetwork implements SocialConn {
 			access_token,
 			refresh_token,
 			user_id: this.creds.user_id,
-			state: SocialNetwork.decipherState(state)
 		};
 	}
 
-	async refreshAuthTokens(oldTokens: Tokens) {
+	async refreshAuthTokens(oldTokens: { access_token: string, refresh_token?: string }) {
 		if (!oldTokens?.refresh_token) {
 			throw new Error('A refresh token is needed in order to refresh access_token')
 		}
