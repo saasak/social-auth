@@ -1,16 +1,21 @@
 {
   "name": "@saasak/social-auth",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Helper to authorize social networks",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-	"private": false,
+  "private": false,
   "scripts": {
     "build": "npx rimraf dist && tsc --rootDir ./src --outDir dist/",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepack": "npm run build"
   },
-  "keywords": ["twitter", "instagram", "facebook", "social networks"],
+  "keywords": [
+    "twitter",
+    "instagram",
+    "facebook",
+    "social networks"
+  ],
   "author": "Saasak SASU",
   "license": "ISC",
   "devDependencies": {
