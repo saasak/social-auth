@@ -103,8 +103,10 @@ export abstract class SocialNetwork {
 		if (!SocialNetwork.inMemoryMap.has(state)) {
 			return {}
 		}
+		const verifier = SocialNetwork.inMemoryMap.get(state)
+		SocialNetwork.inMemoryMap.delete(state)
 
-		return { state, verifier: SocialNetwork.inMemoryMap.get(state) }
+		return { state, verifier }
 	}
 
 	buildUrl(base: string, params?: Record<string, string>) {
