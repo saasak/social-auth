@@ -101,7 +101,7 @@ export abstract class SocialNetwork {
 
 	async getState(state: string) {
 		if (!SocialNetwork.inMemoryMap.has(state)) {
-			throw new Error('Error getting state')
+			return {}
 		}
 
 		return { state, verifier: SocialNetwork.inMemoryMap.get(state) }
