@@ -64,11 +64,26 @@ export class Twitter extends SocialNetwork implements SocialConn {
 		if (!response) {
 			throw new Error('Call to fetch an access token failed')
 		}
-
 		const { access_token, refresh_token } = response as Tokens;
+
+		const selfUrl = 'https://api.twitter.com/2/users/self'
+		const identity = await fetch(this.buildUrl(selfUrl), {
+				headers: {
+					Authorization: `Bearer ${access_token}`,
+					Accept: 'application/json'
+				}
+			})
+			.then(async (res) => res.ok ? res.json() : null)
+			.catch(() => null);
+
+		if (!identity) {
+			throw new Error('Call to fetch a valid identity')
+		}
+
 		return {
 			access_token,
 			refresh_token,
+			user_id: identity.data?.id ?? ''
 		};
 	}
 

@@ -27,6 +27,7 @@ export type Tokens = {
 	access_token: string
 	refresh_token?: string
 	expires_at?: Date
+	user_id?: string
 }
 
 export type RefreshedTokens = {
