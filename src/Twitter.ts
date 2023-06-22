@@ -26,6 +26,7 @@ export class Twitter extends SocialNetwork implements SocialConn {
 			response_type: 'code',
 			code_challenge: verifier,
 			code_challenge_method: 'plain',
+			force_login: 'true',
 			state
 		};
 

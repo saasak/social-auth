@@ -19,6 +19,7 @@ export class Facebook extends SocialNetwork implements SocialConn {
 			redirect_uri: this.creds.redirect_uri,
 			scope: (this.scope ?? ['email', 'public_profile', 'user_posts']).join(','),
 			response_type: 'code',
+			auth_type: 'reauthenticate',
 			state
 		};
 
